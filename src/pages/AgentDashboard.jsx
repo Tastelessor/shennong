@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../providers/AuthProvider';
 import { useI18n } from '../features/i18n/I18nProvider';
 import { Send, MessageSquare, Clock } from 'lucide-react';
 import { useSocket } from '../providers/SocketProvider';
+import { api } from '../api';
 
 export const AgentDashboard = () => {
   const { user } = useAuth();
@@ -12,106 +13,122 @@ export const AgentDashboard = () => {
   const [sessions, setSessions] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
 
+  /* --------- 拉取会话 & 轮询 --------- */
   useEffect(() => {
-    const fetchSessions = () => {
-      fetch("http://localhost:3000/api/agent/sessions")
-        .then(res => res.json())
-        .then(setSessions);
-    };
+    const fetchSessions = () =>
+      api.agent
+        .getSession()
+        .then(data => setSessions(data.sort((a, b) => new Date(b.lastMsgTime) - new Date(a.lastMsgTime))));
 
     fetchSessions();
     const timer = setInterval(fetchSessions, 5000);
 
-    socket.on('receive_message', (msg) => {
-      if (activeRoom && msg.roomId === activeRoom) {
-        setMessages(prev => [...prev, msg]);
-      }
-      fetchSessions();
-    });
+    return () => clearInterval(timer);
+  }, []);
 
-    return () => {
-      clearInterval(timer);
-      socket.disconnect();
+  /* --------- 监听新消息 --------- */
+  useEffect(() => {
+    if (!socket) return;
+
+    const handler = (msg) => {
+      if (msg.roomId === activeRoom) setMessages(prev => [...prev, msg]);
+      api.agent.getSession().then(setSessions);
     };
-  }, [activeRoom]);
+
+    socket.on('receive_message', handler);
+    return () => socket.off('receive_message', handler);
+  }, [socket, activeRoom]);
 
   const selectRoom = (roomId) => {
     setActiveRoom(roomId);
     socket.emit('join_room', roomId);
-    fetch(`http://localhost:3000/api/chat/history?roomId=${roomId}`)
-      .then(res => res.json())
-      .then(setMessages);
+    api.chat.getHistory({ roomId }).then(setMessages);
   };
 
   const sendReply = () => {
     if (!input.trim() || !activeRoom) return;
-    const msg = {
-      roomId: activeRoom,
-      senderName: user.name,
-      senderRole: 'agent',
-      content: input
-    };
+    const msg = { roomId: activeRoom, senderName: user.name, senderRole: 'agent', content: input };
     socket.emit('send_message', msg);
     setMessages(prev => [...prev, msg]);
-    setInput("");
+    setInput('');
   };
 
   return (
     <>
-      {/* Left Sidebar: Session List */}
+      {/* 左侧会话列表 */}
       <div className="w-80 bg-white border-r overflow-y-auto custom-scrollbar flex-shrink-0">
         <div className="p-4 font-bold border-b bg-gray-50 text-gray-600 uppercase text-xs tracking-wider">
-          {t("agent.waiting")}
+          {t('agent.waiting')}
         </div>
         {sessions.map(s => (
-          <div 
-            key={s.roomId} 
+          <div
+            key={s.roomId}
             onClick={() => selectRoom(s.roomId)}
-            className={`p-4 border-b cursor-pointer transition relative group ${activeRoom === s.roomId ? 'bg-green-50' : 'hover:bg-gray-50'}`}
+            className={`p-4 border-b cursor-pointer transition relative flex gap-3 ${activeRoom === s.roomId ? 'bg-green-50' : 'hover:bg-gray-50'
+              }`}
           >
-            {activeRoom === s.roomId && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#4a6741]" />}
-            <div className="flex justify-between items-start mb-1">
-              <span className="font-bold text-gray-800">{s.senderName}</span>
-              <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                <Clock size={10} /> {new Date(s.lastMsgTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </span>
+            <div className="relative shrink-0">
+              <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500">
+                {s.senderName[0]}
+              </div>
+              {s.unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
+                  {s.unreadCount > 99 ? '99+' : s.unreadCount}
+                </span>
+              )}
             </div>
-            <p className="text-sm text-gray-500 truncate">{s.content}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-bold text-gray-800 truncate">{s.senderName}</span>
+                <span className="text-[10px] text-gray-400">
+                  {new Date(s.lastMsgTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 truncate">{s.content}</p>
+            </div>
           </div>
         ))}
-        {sessions.length === 0 && <p className="p-10 text-center text-gray-400 italic">{t("agent.empty")}</p>}
+        {sessions.length === 0 && (
+          <p className="p-10 text-center text-gray-400 italic">{t('agent.empty')}</p>
+        )}
       </div>
 
-      {/* Right Area: Chat Window */}
+      {/* 右侧聊天窗口 */}
       <div className="flex-1 flex flex-col bg-[#f0f2f5]">
         {activeRoom ? (
           <>
             <div className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.senderRole === 'agent' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] p-3 rounded-2xl shadow-sm text-sm ${
-                    m.senderRole === 'agent' 
-                      ? 'bg-[#4a6741] text-white rounded-tr-none' 
-                      : 'bg-white text-gray-800 rounded-tl-none border'
-                  }`}>
-                    {m.senderRole !== 'agent' && <p className="text-[10px] opacity-50 mb-1">{m.senderName}</p>}
+                  <div
+                    className={`max-w-[70%] p-3 rounded-2xl shadow-sm text-sm ${m.senderRole === 'agent'
+                        ? 'bg-[#4a6741] text-white rounded-tr-none'
+                        : 'bg-white text-gray-800 rounded-tl-none border'
+                      }`}
+                  >
+                    {m.senderRole !== 'agent' && (
+                      <p className="text-[10px] opacity-50 mb-1">{m.senderName}</p>
+                    )}
                     <p>{m.content}</p>
                   </div>
                 </div>
               ))}
             </div>
-            
+
             <div className="p-4 bg-white border-t flex gap-3 items-center">
-              <input 
-                value={input} 
+              <input
+                value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendReply()}
                 placeholder="Type a reply..."
-                className="flex-1 bg-gray-100 border-0 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#4a6741]" 
+                className="flex-1 bg-gray-100 border-0 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#4a6741]"
               />
-              <button onClick={sendReply} className="bg-[#4a6741] hover:bg-[#3d5535] text-white p-3 rounded-full transition shadow-lg">
+              <button
+                onClick={sendReply}
+                className="bg-[#4a6741] hover:bg-[#3d5535] text-white p-3 rounded-full transition shadow-lg"
+              >
                 <Send size={20} />
               </button>
             </div>

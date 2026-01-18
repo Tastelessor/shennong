@@ -1,32 +1,27 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from './AuthProvider';
 import { API_BASE_URL } from '../utils/request';
-
-const SocketContext = createContext();
+import { SocketContext } from './Contexts';
 
 export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
   const [socket, setSocket] = useState(null);
+  const lastRoomRef = useRef(null);
 
   useEffect(() => {
-    // Initialize connection once on mount
-    const newSocket = io(API_BASE_URL || "http://localhost:3000");
+    const newSocket = io(API_BASE_URL);
     setSocket(newSocket);
-
-    // Cleanup on unmount
     return () => newSocket.disconnect();
   }, []);
 
-  // Handle Room Joining based on User State
   useEffect(() => {
     if (!socket) return;
-
-    const room = user?.id || "guest_room";
-    socket.emit('join_room', room);
-    console.log(`SocketProvider: Joined room ${room}`);
-
-  }, [socket, user]); // Re-run when socket is ready or user changes
+    if (lastRoomRef.current) socket.emit('leave_room', lastRoomRef.current);
+    const currentRoom = user?.id || "guest_room";
+    socket.emit('join_room', currentRoom);
+    lastRoomRef.current = currentRoom;
+  }, [socket, user]);
 
   return (
     <SocketContext.Provider value={socket}>
@@ -35,4 +30,7 @@ export const SocketProvider = ({ children }) => {
   );
 };
 
-export const useSocket = () => useContext(SocketContext);
+export const useSocket = () => {
+  const context = React.useContext(SocketContext);
+  return context;
+}

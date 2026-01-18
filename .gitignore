@@ -1,7 +1,9 @@
 # Vue
+uploads/
 node_modules/
 public/build/
 assets/build/
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

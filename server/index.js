@@ -4,15 +4,28 @@ import bodyParser from 'body-parser';
 import sqlite3 from 'sqlite3';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import multer from 'multer'; // 引入 multer
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 const PORT = 3000;
 
-// ---------- Middleware ----------
+// upload dir
+const uploadDir = './uploads';
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({ storage });
+
 app.use(cors());
 app.use(bodyParser.json());
+app.use('/uploads', express.static('uploads'));
 
 // ---------- 1. DB Init (SQLite) ----------
 const db = new sqlite3.Database('./shennong.db', err => {
@@ -21,6 +34,12 @@ const db = new sqlite3.Database('./shennong.db', err => {
 });
 
 db.serialize(() => {
+// 更新 users 表，增加合伙人和邀请字段
+    db.run(`ALTER TABLE users ADD COLUMN inviterId TEXT`, err => {});
+    db.run(`ALTER TABLE users ADD COLUMN partnerStatus TEXT DEFAULT 'none'`, err => {});
+    db.run(`ALTER TABLE users ADD COLUMN companyName TEXT`, err => {});
+    db.run(`ALTER TABLE users ADD COLUMN creditCode TEXT`, err => {});
+    db.run(`ALTER TABLE users ADD COLUMN licensePath TEXT`, err => {});
     // users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY, email TEXT UNIQUE, phone TEXT, password TEXT, name TEXT, role TEXT DEFAULT 'user'
@@ -50,27 +69,142 @@ db.serialize(() => {
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // ---------- 2. Socket.io Real-time Chat ----------
+// server/index.js 中的 Socket 部分
 io.on('connection', socket => {
-    console.log('Socket connected:', socket.id);
-
+    
     socket.on('join_room', roomId => {
         socket.join(roomId);
-        console.log(`User/Agent joined room: ${roomId}`);
+        console.log(`Socket ${socket.id} joined: ${roomId}`);
+    });
+
+    // 新增：离开房间处理
+    socket.on('leave_room', roomId => {
+        socket.leave(roomId);
+        console.log(`Socket ${socket.id} left: ${roomId}`);
     });
 
     socket.on('send_message', data => {
         const { roomId, senderName, senderRole, content } = data;
-        // persist
+        
+        // 存入数据库
         db.run(`INSERT INTO chat_messages (roomId, senderName, senderRole, content) VALUES (?, ?, ?, ?)`,
-            [roomId, senderName, senderRole, content], err => { if (err) console.error(err); });
-        // broadcast
-        socket.to(roomId).emit('receive_message', data);
-    });
+            [roomId, senderName, senderRole, content]);
 
-    socket.on('disconnect', () => console.log('Socket disconnected:', socket.id));
+        // 只发送给对应房间的人
+        // 注意：使用 io.to(roomId) 而不是 socket.to(roomId)
+        // socket.to 会排除发送者自己，而客服系统通常需要多端同步
+        io.to(roomId).emit('receive_message', data);
+    });
 });
 
 // ---------- 3. REST API ----------
+
+// 获取个人详细资料
+app.get('/api/user/profile/:id', (req, res) => {
+    db.get(`SELECT id, name, email, role, phone, inviterId, partnerStatus, companyName FROM users WHERE id = ?`, 
+        [req.params.id], (err, row) => {
+        if (err || !row) return res.status(404).json({ message: "Not found" });
+        res.json(row);
+    });
+});
+
+// 绑定邀请人逻辑
+app.post('/api/user/bind-inviter', (req, res) => {
+    const { userId, inviterId } = req.body;
+    if (userId === inviterId) return res.status(400).json({ message: "Cannot bind yourself" });
+
+    // 1. 检查邀请人是否存在
+    db.get(`SELECT id FROM users WHERE id = ?`, [inviterId], (err, inviter) => {
+        if (!inviter) return res.status(404).json({ message: "Inviter not found" });
+
+        // 2. 检查该邀请人是否已经邀请了2个人（限制）
+        db.get(`SELECT COUNT(*) as count FROM users WHERE inviterId = ?`, [inviterId], (err, row) => {
+            if (row.count >= 2) return res.status(400).json({ message: "This inviter has reached maximum capacity (2)" });
+
+            // 3. 执行绑定
+            db.run(`UPDATE users SET inviterId = ? WHERE id = ? AND inviterId IS NULL`, 
+                [inviterId, userId], function(err) {
+                if (this.changes === 0) return res.status(400).json({ message: "Already bound or user error" });
+                res.json({ message: "Bound successfully" });
+            });
+        });
+    });
+});
+
+// 申请合伙人 (上传营业执照)
+app.post('/api/partner/apply', upload.single('license'), (req, res) => {
+    const { userId, companyName, creditCode } = req.body;
+    const licensePath = req.file ? `/uploads/${req.file.filename}` : null;
+
+    db.run(`UPDATE users SET 
+            partnerStatus = 'pending', 
+            companyName = ?, 
+            creditCode = ?, 
+            licensePath = ? 
+            WHERE id = ?`,
+        [companyName, creditCode, licensePath, userId], function(err) {
+            if (err) return res.status(500).json({ message: "Apply failed" });
+            res.json({ message: "Application submitted" });
+        });
+});
+
+// 管理员：获取所有待审核合伙人
+app.get('/api/admin/partner-applications', (req, res) => {
+    db.all(`SELECT id, name, companyName, creditCode, licensePath, partnerStatus FROM users WHERE partnerStatus = 'pending'`, 
+    (err, rows) => {
+        res.json(rows || []);
+    });
+});
+
+// 管理员：审核通过合伙人
+app.post('/api/admin/partner-approve/:id', (req, res) => {
+    db.run(`UPDATE users SET partnerStatus = 'approved' WHERE id = ?`, [req.params.id], function(err) {
+        if (err) return res.status(500).json({ message: "Approval failed" });
+        res.json({ message: "Partner approved" });
+    });
+});
+
+// 合伙人：获取邀请统计 (递归简单实现：A 邀请 B, B 邀请 C, 都算在 A 身上)
+app.get('/api/user/invite-stats/:id', (req, res) => {
+    const userId = req.params.id;
+    // 获取直属下线列表
+    db.all(`SELECT id FROM users WHERE inviterId = ?`, [userId], (err, directs) => {
+        if (err || !directs.length) return res.json({ teamACount: 0, teamBCount: 0 });
+
+        // 我们假设 A 邀请了 B1 和 B2。teamACount 是 B1 及其所有下属的数量
+        const getTeamSize = (rootId) => {
+            return new Promise((resolve) => {
+                db.all(`WITH RECURSIVE team AS (
+                    SELECT id FROM users WHERE inviterId = ?
+                    UNION ALL
+                    SELECT u.id FROM users u INNER JOIN team t ON u.inviterId = t.id
+                ) SELECT COUNT(*) as total FROM team`, [rootId], (err, row) => {
+                    resolve(row ? row[0].total : 0);
+                });
+            });
+        };
+
+        // 计算两个支队的总人数
+        const p1 = getTeamSize(directs[0]?.id);
+        const p2 = directs[1] ? getTeamSize(directs[1].id) : Promise.resolve(0);
+
+        Promise.all([p1, p2]).then(([c1, c2]) => {
+            res.json({ teamACount: c1, teamBCount: c2 });
+        });
+    });
+});
+
+// 调整客服会话接口：支持未读计数预览
+app.get('/api/agent/sessions', (req, res) => {
+    const sql = `
+        SELECT roomId, senderName, content, timestamp as lastMsgTime,
+        (SELECT COUNT(*) FROM chat_messages m2 WHERE m2.roomId = m1.roomId AND m2.senderRole = 'user') as unreadCount
+        FROM chat_messages m1
+        WHERE id IN (SELECT MAX(id) FROM chat_messages GROUP BY roomId)
+        ORDER BY timestamp DESC
+    `;
+    db.all(sql, [], (err, rows) => res.json(rows || []));
+});
 
 // registration
 app.post('/api/register', (req, res) => {

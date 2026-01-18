@@ -1,14 +1,19 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { useAuth } from '../providers/AuthProvider'; // 引入 Auth
 import { LoginForm } from '../features/auth/LoginForm';
 import { RegisterForm } from '../features/auth/RegisterForm';
 import { AppointmentModal } from '../features/appointment/AppointmentModal';
 import { HistoryModal } from '../features/appointment/HistoryModal';
+import { UserCenter } from '../features/user/UserCenter';
+import { PartnerForm } from '../features/user/PartnerForm';
 
-export const ModalManager = ({ type, onClose }) => {
+// 增加 onSwitch 参数，用于在弹窗间切换
+export const ModalManager = ({ type, onClose, onSwitch }) => {
+  const { user } = useAuth(); // 获取用户信息
+  
   if (!type) return null;
 
-  // Render logic based on type
   const renderContent = () => {
     switch (type) {
       case 'login':
@@ -18,10 +23,12 @@ export const ModalManager = ({ type, onClose }) => {
       case 'appt':
         return <AppointmentModal onSuccess={onClose} onClose={onClose} />;
       case 'history':
-        // HistoryModal handles its own header/structure, so we return it directly
-        // But we wrap it in specific styles if needed, or let it handle itself.
-        // In this case, HistoryModal has its own close button and header.
         return <HistoryModal onClose={onClose} />;
+      case 'userCenter':
+        // 使用传入的 onSwitch 代替 setModalType
+        return <UserCenter onOpenPartnerForm={() => onSwitch('partnerReg')} />;
+      case 'partnerReg':
+        return <PartnerForm status={user?.partnerStatus} onClose={onClose} />;
       default:
         return null;
     }
@@ -42,14 +49,14 @@ export const ModalManager = ({ type, onClose }) => {
       <div className="bg-white p-8 rounded-2xl w-full max-w-md relative shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Close Button (ApptModal handles its own close button inside for layout reasons, others use this) */}
         {type !== 'appt' && (
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
           >
             <X size={24} />
           </button>
         )}
-        
+
         {renderContent()}
       </div>
     </div>

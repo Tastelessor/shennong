@@ -1,19 +1,20 @@
-export const API_BASE_URL = "http://localhost:3000";
+import axios from 'axios';
 
-export async function request(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const defaultHeaders = { 'Content-Type': 'application/json' };
-  
-  const config = {
-    ...options,
-    headers: { ...defaultHeaders, ...options.headers },
-  };
+export const API_BASE_URL = 'http://localhost:3000'
+const request = axios.create({
+  baseURL: API_BASE_URL + '/api', // 注意：这里统一加上了 /api 前缀
+  timeout: 5000,
+});
 
-  const response = await fetch(url, config);
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || 'API request failed');
+// 响应拦截器：直接提取后端返回的 data，简化组件逻辑
+request.interceptors.response.use(
+  (response) => {
+    return response.data;
+  },
+  (error) => {
+    const message = error.response?.data?.message || error.message;
+    return Promise.reject(new Error(message));
   }
-  return data;
-}
+);
+
+export default request;
