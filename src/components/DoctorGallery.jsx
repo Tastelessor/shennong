@@ -1,31 +1,26 @@
 import React from 'react';
-import { useI18n } from '../features/i18n/I18nProvider';
+import { useI18n } from '../features/i18n/I18nProvider'; // 确保路径正确
 import { ArrowUp } from 'lucide-react';
+import doc1 from '../assets/doc1.jpeg';
+import doc2 from '../assets/doc2.jpeg';
+import doc3 from '../assets/doc3.jpeg';
+import doc4 from '../assets/doc4.jpg';
 
 export const DoctorGallerySection = () => {
-  const { lang, t } = useI18n();
+  const { t } = useI18n();
 
-  // 模拟数据
-  const getDoctors = (l) => [
-    {
-      id: 1,
-      name: l === 'en' ? "Li Shizhen" : "李时珍",
-      title: l === 'en' ? "Master of Medicine" : "医药大师 / 首席专家",
-      bio: l === 'en' ? "Author of Compendium of Materia Medica." : "医药学家，著成五十二卷《本草纲目》。",
-      // 使用占位图
-      photoUrl: "https://placehold.co/400x500/4a6741/white?text=Li" 
-    },
-    {
-      id: 2,
-      name: l === 'en' ? "Hua Tuo" : "华佗",
-      title: l === 'en' ? "Surgical Expert" : "外科圣手 / 主任医师",
-      bio: l === 'en' ? "Inventor of Mafeisan." : "创制麻沸散，被尊为“外科鼻祖”。",
-      photoUrl: "https://placehold.co/400x500/8c4b37/white?text=Hua"
-    },
-    // ... 更多医生
-  ];
-
-  const doctors = getDoctors(lang);
+  // 动态构建数据，id 用于映射翻译键值
+  const doctors = [
+    { id: 1, img: doc1 },
+    { id: 2, img: doc2 },
+    { id: 3, img: doc3 },
+    { id: 4, img: doc4 },
+  ].map(doc => ({
+    ...doc,
+    name: t(`doc.${doc.id}.name`),
+    title: t(`doc.${doc.id}.title`),
+    bio: t(`doc.${doc.id}.bio`)
+  }));
 
   return (
     <section className="py-20 bg-[#fdfbf7] overflow-hidden">
@@ -38,7 +33,7 @@ export const DoctorGallerySection = () => {
         {doctors.map((doc) => (
           <div key={doc.id} className="flex-shrink-0 w-[300px] bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 group hover:border-[#4a6741] transition-all snap-start">
             <div className="relative h-[350px] overflow-hidden">
-              <img src={doc.photoUrl} alt={doc.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img src={doc.img} alt={doc.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-100" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
               <div className="absolute bottom-4 left-4 text-white">
                 <h3 className="text-xl font-bold">{doc.name}</h3>
@@ -46,7 +41,7 @@ export const DoctorGallerySection = () => {
               </div>
             </div>
             <div className="p-6">
-              <p className="text-gray-600 text-sm line-clamp-3">{doc.bio}</p>
+              <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">{doc.bio}</p>
               <button className="mt-4 w-full py-2 border border-[#4a6741] text-[#4a6741] rounded-full hover:bg-[#4a6741] hover:text-white transition text-sm font-bold flex items-center justify-center gap-1">
                 {t("doc.readmore")} <ArrowUp className="rotate-45" size={14} />
               </button>

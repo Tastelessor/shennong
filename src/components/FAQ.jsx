@@ -1,39 +1,63 @@
 import React, { useState } from 'react';
-import { useI18n } from '../features/i18n/I18nProvider';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useI18n } from '../features/i18n/I18nProvider'; // 确保路径正确
+import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 
 export const FAQSection = () => {
   const { t } = useI18n();
-  const [openIndex, setOpenIndex] = useState(0);
+  const [openIndexes, setOpenIndexes] = useState([0]); 
 
-  // TODO: translate in i18n
+  // 使用 t() 动态构建数组
   const faqs = [
-    { q: "你们的药材来源可靠吗？", a: "我们所有药材均源自神农架及知名药产区，经过严格的农残和重金属检测。" },
-    { q: "针灸治疗疼吗？", a: "针灸通常只会有微弱的酸麻胀感，是由我们拥有20年以上经验的专家团队操作。" },
-    { q: "初次问诊需要准备什么？", a: "建议穿着宽松衣物，并携带过往体检报告或病历（如有）。" }
+    { q: t("qa.q1"), a: t("qa.a1") },
+    { q: t("qa.q2"), a: t("qa.a2") },
+    { q: t("qa.q3"), a: t("qa.a3") },
+    { q: t("qa.q4"), a: t("qa.a4") }
   ];
+
+  const toggle = (index) => {
+    setOpenIndexes(prev => {
+      if (prev.includes(index)) {
+        return prev.filter(i => i !== index);
+      } else {
+        return [...prev, index];
+      }
+    });
+  };
 
   return (
     <section className="bg-white py-16">
-      <div className="max-w-2xl mx-auto px-4">
-        <h3 className="text-2xl font-bold text-center mb-8 text-[#4a6741]">{t("qa.title")}</h3>
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="text-center mb-10">
+           <h3 className="text-3xl font-bold text-[#4a6741] font-serif mb-2">{t("qa.title")}</h3>
+           <p className="text-gray-500">{t("qa.desc")}</p>
+        </div>
+        
         <div className="space-y-4">
-          {faqs.map((item, i) => (
-            <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
-              <button 
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 font-bold text-left text-gray-800 transition"
-              >
-                {item.q}
-                {openIndex === i ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </button>
-              {openIndex === i && (
-                <div className="p-4 bg-white text-gray-600 border-t border-gray-100 animate-in slide-in-from-top-2">
-                  {item.a}
+          {faqs.map((item, i) => {
+            const isOpen = openIndexes.includes(i);
+            return (
+              <div key={i} className={`border rounded-xl overflow-hidden transition-all duration-300 ${isOpen ? 'border-[#4a6741] shadow-md' : 'border-gray-200'}`}>
+                <button 
+                  onClick={() => toggle(i)}
+                  className={`w-full flex justify-between items-center p-5 text-left font-bold transition-colors ${isOpen ? 'bg-[#4a6741] text-white' : 'bg-white text-gray-800 hover:bg-gray-50'}`}
+                >
+                  <span className="flex items-center gap-3">
+                    <HelpCircle size={20} className={isOpen ? "text-green-200" : "text-[#4a6741]"} />
+                    {item.q}
+                  </span>
+                  {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </button>
+                
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}
+                >
+                  <div className="p-5 text-gray-600 bg-gray-50 leading-relaxed border-t border-gray-100">
+                    {item.a}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

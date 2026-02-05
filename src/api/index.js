@@ -12,6 +12,8 @@ export const api = {
     getStatus: (userId) => request.get(`/partner/status/${userId}`),
     getAllApplications: () => request.get('/admin/partner-applications'),
     approve: (appId) => request.post(`/admin/partner-approve/${appId}`),
+    revoke: (id) => request.post(`/partner/revoke/${id}`),
+    getTree: (id) => request.get(`/partner/tree/${id}`),
   },
   auth: {
     login: (data) => request.post('/login', data),
@@ -29,14 +31,18 @@ export const api = {
   appointment: {
     create: (data) => request.post('/appointments', data),
     getHistory: (userId) => request.get('/appointments', { params: { userId } }),
+    process: (id) => request.post(`/admin/appointment-process/${id}`),
   },
   admin: {
     getAllData: () => request.get('/admin/all'),
+    getStats: (period) => request.get('/admin/stats', { params: { period } }), // [新增]
+    getPartnersDetailed: () => request.get('/admin/partners-detailed'), // [新增]
   },
   agent: {
     getSession: () => request.get('/agent/sessions'),
   },
   chat: {
     getHistory: (roomId) => request.get('/chat/history', { params: { roomId } }),
+    markRead: (roomId) => request.post('/chat/read', { roomId }),
   }
 };

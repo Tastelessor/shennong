@@ -44,7 +44,12 @@ export const AgentDashboard = () => {
   const selectRoom = (roomId) => {
     setActiveRoom(roomId);
     socket.emit('join_room', roomId);
-    api.chat.getHistory({ roomId }).then(setMessages);
+api.chat.getHistory(roomId).then(data => {
+      setMessages(data);
+    });
+api.chat.markRead(roomId).then(() => {
+      fetchSessions();
+    });
   };
 
   const sendReply = () => {

@@ -30,7 +30,7 @@ export const MainLayout = () => {
         <div className="flex items-center gap-3 text-[#4a6741] cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
           {/* Replace with actual image tag if needed */}
           <img 
-          src='/public/logo.svg'
+          src='/logo.svg'
           className="w-20 h-20 rounded-full flex items-center justify-center">
           </img>
           <span className="text-2xl font-bold tracking-tighter font-serif">{t("app.name")}</span>
@@ -122,32 +122,32 @@ export const MainLayout = () => {
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-gray-800 pb-12 mb-8">
           <div>
             <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
-              <span className="w-2 h-6 bg-[#4a6741] inline-block"></span>
-              {t("footer.contact")}
+                <span className="w-2 h-6 bg-[#4a6741] inline-block"></span>
+                {t("footer.contact")}
             </h4>
             <div className="space-y-3 opacity-80 font-light">
-              <p>Hotline: +86 755 8888 9999</p>
-              <p>Email: support@shennong.com</p>
-              <p>Add: 3012 Sungang East Rd, Luohu, Shenzhen</p>
+                <p>Hotline: +86 755 8888 9999</p>
+                <p>Email: support@shennong.com</p>
+                <p>{t("footer.address")}</p>
             </div>
             <div className="flex gap-4 mt-6">
-              <Facebook className="hover:text-[#4a6741] cursor-pointer transition" />
-              <Instagram className="hover:text-[#4a6741] cursor-pointer transition" />
+              <Facebook className="hover:text-[#4a6741] cursor-pointer transition" /> 
+              <Instagram className="hover:text-[#4a6741] cursor-pointer transition" /> 
               <Linkedin className="hover:text-[#4a6741] cursor-pointer transition" />
             </div>
           </div>
           <div className="md:text-right">
             <h4 className="text-xl font-bold mb-6">SHEN NONG TCM</h4>
             <ul className="space-y-3 opacity-70">
-              <li className="cursor-pointer hover:text-[#4a6741] transition">About Us</li>
-              <li className="cursor-pointer hover:text-[#4a6741] transition">TCM Services</li>
-              <li className="cursor-pointer hover:text-[#4a6741] transition">Expert Team</li>
-              <li className="cursor-pointer hover:text-[#4a6741] transition">Privacy Policy</li>
+                <li className="cursor-pointer hover:text-[#4a6741] transition">{t("footer.about")}</li>
+                <li className="cursor-pointer hover:text-[#4a6741] transition">{t("footer.services")}</li>
+                <li className="cursor-pointer hover:text-[#4a6741] transition">{t("footer.team")}</li>
+                <li className="cursor-pointer hover:text-[#4a6741] transition">{t("footer.privacy")}</li>
             </ul>
           </div>
         </div>
         <div className="text-center text-gray-500 text-sm">
-          © {new Date().getFullYear()} Shen Nong Traditional Chinese Medicine. All rights reserved.
+            {t("footer.rights")}
         </div>
       </footer>
 

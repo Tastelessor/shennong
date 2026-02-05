@@ -8,8 +8,7 @@ export const RollingNumber = ({ target, duration = 2000 }) => {
     const step = (timestamp) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // Use easeOut effect, allow numbers to increase quickly then slowly
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease Out Cubic
       setCount(Math.floor(easeProgress * target));
       if (progress < 1) {
         window.requestAnimationFrame(step);
@@ -18,5 +17,6 @@ export const RollingNumber = ({ target, duration = 2000 }) => {
     window.requestAnimationFrame(step);
   }, [target, duration]);
 
-  return <span>{count.toLocaleString()}</span>;
+  // 确保数字不会是 undefined
+  return <span className="inline-block tabular-nums">{count.toLocaleString()}</span>;
 };

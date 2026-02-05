@@ -1,3 +1,4 @@
+// src/components/Tips.jsx
 import React, { useState } from 'react';
 import { useI18n } from '../features/i18n/I18nProvider';
 
