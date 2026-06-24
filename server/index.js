@@ -10,24 +10,29 @@ import fs from 'fs';
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const DB_PATH = process.env.DB_PATH || './shennong.db';
+const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
 
 // 配置上传
-const uploadDir = './uploads';
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage });
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(UPLOAD_DIR));
 app.disable('etag');
 
+// 确保数据库目录存在
+const dbDir = require('path').dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+
 // DB 初始化
-const db = new sqlite3.Database('./shennong.db');
+const db = new sqlite3.Database(DB_PATH);
 db.serialize(() => {
     // 确保所有字段存在
     const columns = [

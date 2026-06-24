@@ -1,0 +1,7 @@
+node_modules
+shennong.db
+uploads
+*.log
+.env
+.git
+.gitignore

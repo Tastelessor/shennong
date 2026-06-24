@@ -1,0 +1,65 @@
+name: Build and Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REPOSITORY: shennong
+  ECS_SERVICE: shennong-backend
+  ECS_CLUSTER: shennong-cluster
+
+permissions:
+  id-token: write   # OIDC 需要
+  contents: read     # checkout 代码需要
+
+jobs:
+  deploy:
+    name: Build, Push & Deploy
+    runs-on: ubuntu-latest
+    environment: production  # 需要手动确认（可选，下面会说明）
+
+    steps:
+      # 1. 拉代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. OIDC 登录 AWS（零长期凭证）
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::704807605771:role/github-actions-shennong
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 3. 登录 ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. 构建 Docker 镜像（linux/amd64，ECS Fargate 要求）
+      - name: Build Docker image
+        working-directory: ./server
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
+            .
+
+      # 5. 推送到 ECR（两个 tag：commit SHA + latest）
+      - name: Push to ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      # 6. 更新 ECS 服务，拉取新镜像
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --force-new-deployment \
+            --query 'service.serviceName' \
+            --output text
