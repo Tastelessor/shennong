@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import multer from 'multer';
 import fs from 'fs';
+import path from 'path';
 
 const app = express();
 const httpServer = createServer(app);
@@ -28,7 +29,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 app.disable('etag');
 
 // 确保数据库目录存在
-const dbDir = require('path').dirname(DB_PATH);
+const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 // DB 初始化
