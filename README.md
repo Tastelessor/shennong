@@ -9,7 +9,9 @@
 [![.NET](https://img.shields.io/badge/.NET-8-512bd4?logo=dotnet)](https://dotnet.microsoft.com)
 [![SignalR](https://img.shields.io/badge/SignalR-Realtime-007acc)](https://learn.microsoft.com/aspnet/core/signalr)
 
-Appointment booking · Partner referral system · Live chat · Multi-language (EN / 中文 / বাংলা)
+**[English](./README.md)** · **[中文](./README-zh.md)** · **[বাংলা](./README-bn.md)**
+
+Appointment booking · Partner referral system · Live chat · Multi-language support
 
 </div>
 
@@ -17,9 +19,7 @@ Appointment booking · Partner referral system · Live chat · Multi-language (E
 
 ## About
 
-Shen Nong TCM is a clinic management platform built for a traditional Chinese medicine practice in Sylhet, Bangladesh. It handles patient appointment booking, a multi-tier partner referral system, real-time patient-agent chat, and clinic location management — all wrapped in a trilingual interface.
-
-This is a **commercial project**, not open source.
+Shen Nong TCM is a commercial demo platform built for a traditional Chinese medicine practice in Sylhet, Bangladesh. It handles patient appointment booking, a multi-tier partner referral system, real-time patient-agent chat, and clinic location management — all wrapped in a trilingual interface.
 
 ## Quick Start
 
@@ -184,4 +184,4 @@ terraform apply
 
 ## License
 
-Proprietary. All rights reserved. This is a commercial project — not open source.
+Proprietary. All rights reserved. This is a commercial demo — not open source.
