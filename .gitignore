@@ -1,6 +1,8 @@
 # Vue
-uploads/
+# Dependencies
 node_modules/
+.terraform/
+*.tfstate*
 public/build/
 assets/build/
 *.db
