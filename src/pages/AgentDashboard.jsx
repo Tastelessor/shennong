@@ -16,12 +16,12 @@ export const AgentDashboard = () => {
   const [input, setInput] = useState('');
 
   /* --------- 拉取会话 & 轮询 --------- */
-  useEffect(() => {
-    const fetchSessions = () =>
-      api.agent
-        .getSession()
-        .then(data => setSessions(data.sort((a, b) => new Date(b.lastMsgTime) - new Date(a.lastMsgTime))));
+  const fetchSessions = () =>
+    api.agent
+      .getSession()
+      .then(data => setSessions(data.sort((a, b) => new Date(b.lastMsgTime) - new Date(a.lastMsgTime))));
 
+  useEffect(() => {
     fetchSessions();
     const timer = setInterval(fetchSessions, 5000);
 

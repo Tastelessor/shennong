@@ -10,9 +10,6 @@ export const MapSection = () => {
     const markersRef = useRef({});
 
     useEffect(() => {
-        // Mark if already unmounted
-        let isMounted = true;
-
         api.clinic.getLocations().then(data => {
             setLocations(data);
             if (data.length === 0 || !window.L) return;
@@ -37,8 +34,6 @@ export const MapSection = () => {
         });
 
         return () => {
-            // 卸载时的清理工作
-            isMounted = false;
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;

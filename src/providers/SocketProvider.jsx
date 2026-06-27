@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useContext } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from './AuthProvider';
 import { API_BASE_URL } from '../utils/request';

@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { useI18n } from '../features/i18n/I18nProvider';
 import { API_BASE_URL } from '../utils/request';
 import { 
   Users, Calendar, ShieldCheck, Activity, Search, RefreshCw, 
@@ -15,8 +14,6 @@ import {
 } from 'recharts';
 
 export const AdminDashboard = () => {
-  const { t } = useI18n();
-  
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ current: {}, chart: [] });
   const [liveLogs, setLiveLogs] = useState([]);
@@ -28,12 +25,6 @@ export const AdminDashboard = () => {
 
   // 模块状态: 'monitor' | 'users' | 'appts' | 'partners'
   const [activeTab, setActiveTab] = useState('monitor'); 
-
-  useEffect(() => {
-    fetchGlobalData();
-    const timer = setInterval(fetchGlobalData, 10000);
-    return () => clearInterval(timer);
-  }, []);
 
   const fetchGlobalData = () => {
     Promise.all([
@@ -49,6 +40,12 @@ export const AdminDashboard = () => {
       setLoading(false);
     });
   };
+
+  useEffect(() => {
+    fetchGlobalData();
+    const timer = setInterval(fetchGlobalData, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 预约处理回调
   const handleProcessAppt = async (id) => {
@@ -360,15 +357,12 @@ const AppointmentManagement = ({ appts, onProcess }) => {
 // ==========================================
 const PartnerManagerModule = ({ initialApps }) => {
   const [partners, setPartners] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list'); // 'list' | 'pending'
   const [treeData, setTreeData] = useState(null);
 
   const loadPartners = () => {
-    setLoading(true);
     api.admin.getPartnersDetailed().then(data => {
       setPartners(data);
-      setLoading(false);
     });
   };
 
@@ -382,7 +376,7 @@ const PartnerManagerModule = ({ initialApps }) => {
       await api.partner.revoke(id);
       loadPartners();
       alert("撤销成功");
-    } catch (e) {
+    } catch {
       alert("操作失败");
     }
   };
